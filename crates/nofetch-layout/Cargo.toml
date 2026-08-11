@@ -1,0 +1,7 @@
+[package]
+name = "nofetch-layout"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nofetch-core.workspace = true

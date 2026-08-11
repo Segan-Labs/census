@@ -1,0 +1,11 @@
+[package]
+name = "nofetch-collectors"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nofetch-core.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+libc = "0.2"

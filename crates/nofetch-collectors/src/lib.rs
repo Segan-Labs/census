@@ -1,0 +1,19 @@
+pub mod proc_collector;
+pub mod sys_collector;
+pub mod nvml_collector;
+pub mod display_collector;
+pub mod sensor_collector;
+pub mod network_collector;
+pub mod docker_collector;
+pub mod tailscale_collector;
+pub mod software_collector;
+
+pub use proc_collector::*;
+pub use sys_collector::*;
+pub use nvml_collector::*;
+pub use display_collector::*;
+pub use sensor_collector::*;
+pub use network_collector::*;
+pub use docker_collector::*;
+pub use tailscale_collector::*;
+pub use software_collector::*;

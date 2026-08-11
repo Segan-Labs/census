@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/nofetch-core",
+    "crates/nofetch-collectors",
+    "crates/nofetch-protocol",
+    "crates/nofetchd",
+    "crates/nofetch-widgets",
+    "crates/nofetch-layout",
+    "crates/nofetch-render",
+    "crates/nofetch",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+dirs = "5"
+bytes = "1"
+nofetch-core = { path = "crates/nofetch-core" }
+nofetch-collectors = { path = "crates/nofetch-collectors" }
+nofetch-protocol = { path = "crates/nofetch-protocol" }
+nofetch-widgets = { path = "crates/nofetch-widgets" }
+nofetch-layout = { path = "crates/nofetch-layout" }
+nofetch-render = { path = "crates/nofetch-render" }

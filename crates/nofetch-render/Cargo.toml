@@ -1,0 +1,9 @@
+[package]
+name = "nofetch-render"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nofetch-core.workspace = true
+nofetch-widgets.workspace = true
+nofetch-layout.workspace = true
