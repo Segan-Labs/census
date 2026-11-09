@@ -1,8 +1,9 @@
 //! The list layouts: a logo, and an aligned list grouped into a few sections. No boxes, no bars.
 //! Labels are dim, values are the terminal's own foreground, one accent colour (ANSI magenta, so it
-//! follows the terminal's theme) marks the logo, the user@host line and the section names.
+//! follows the terminal's theme) marks the logo, the user@host line and the section names; the
+//! shadowed part of the Eclipse is dim, like the labels.
 
-use crate::logo::{self, Logo};
+use crate::logo::{self, Logo, Tone};
 use crate::Options;
 use census_core::{Config, Snapshot};
 
@@ -202,9 +203,14 @@ fn join(logo: Option<&Logo>, lines: Vec<Line>, st: &Style) -> String {
     let n = lines.len().max(logo.map(|l| l.height()).unwrap_or(0));
     for i in 0..n {
         if let Some(l) = logo {
-            let art = l.lines.get(i).copied().unwrap_or("");
-            let w = art.chars().count();
-            out.push_str(&st.accent(art));
+            let mut w = 0;
+            for (tone, run) in l.row(i) {
+                w += run.chars().count();
+                out.push_str(&match tone {
+                    Tone::Accent => st.accent(&run),
+                    Tone::Dim => st.dim(&run),
+                });
+            }
             out.push_str(&" ".repeat(l.width - w + LOGO_GAP));
         }
         if let Some(line) = lines.get(i) {

@@ -92,7 +92,7 @@ cargo test
 tools/bench.sh            # census (warm daemon) against fastfetch
 ```
 
-`tools/ansi2png.py` and `tools/shots.sh` make the screenshots; `tools/eclipse_to_ascii.py` made the Eclipse from the SeganOS artwork.
+`tools/ansi2png.py` and `tools/shots.sh` make the screenshots. The Eclipse is hand-drawn text in `crates/census-render/assets/`: the art file plus a tones file of the same shape (`d` marks the dim, shadowed disc).
 
 ## Roadmap
 
