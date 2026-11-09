@@ -2,7 +2,7 @@
   "timestamp": "2026-11-09T00:00:00Z",
   "system": {
     "os": "SeganOS 1.0",
-    "kernel": "7.3.0-segnel1.2.0",
+    "kernel": "7.3.0-nox1.2.0",
     "hostname": "host",
     "wm": "SeganOS",
     "shell": "/usr/bin/zsh",

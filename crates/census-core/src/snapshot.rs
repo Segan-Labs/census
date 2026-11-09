@@ -36,6 +36,12 @@ pub struct HardwareInfo {
     pub cpu_cores_physical: usize,
     pub cpu_cores_logical: usize,
     pub gpu: String,
+    /// The CPU's highest frequency in MHz, from cpufreq.
+    #[serde(default)]
+    pub cpu_max_mhz: Option<u32>,
+    /// The machine's friendly product name ("MSI MPG B550 GAMING PLUS (MS-7C56)"), from DMI.
+    #[serde(default)]
+    pub host: Option<String>,
     #[serde(default)]
     pub gpu_driver: Option<String>,
     #[serde(default)]
@@ -63,9 +69,22 @@ pub struct DisplayInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitorInfo {
     pub name: String,
+    /// "WxH" as the screen is used: already swapped for a rotated monitor.
     pub resolution: String,
     pub refresh_rate: u32,
     pub primary: bool,
+    /// Make and model ("R24e"); empty when the monitor does not say.
+    #[serde(default)]
+    pub model: String,
+    #[serde(default = "one")]
+    pub scale: f64,
+    /// Diagonal in inches, when the monitor reports its physical size.
+    #[serde(default)]
+    pub diagonal_in: Option<f64>,
+}
+
+fn one() -> f64 {
+    1.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +107,8 @@ pub struct SoftwareInfo {
     pub cargo: usize,
     pub node: usize,
     pub flatpak: usize,
+    #[serde(default)]
+    pub appimage: usize,
     pub snap: usize,
     pub rust_version: Option<String>,
 }

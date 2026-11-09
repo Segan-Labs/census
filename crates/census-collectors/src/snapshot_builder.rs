@@ -91,6 +91,8 @@ fn assemble(
             cpu: s(&sys, "cpu_brand").unwrap_or_else(|| "Unknown CPU".into()),
             cpu_cores_physical: sys["cores_physical"].as_u64().unwrap_or(0) as usize,
             cpu_cores_logical: sys["cores_logical"].as_u64().unwrap_or(0) as usize,
+            cpu_max_mhz: sys["cpu_max_mhz"].as_u64().map(|v| v as u32),
+            host: s(&sys, "host"),
             gpu: s(&nvml, "gpu_name").unwrap_or_else(|| "Unknown GPU".into()),
             gpu_driver: s(&nvml, "gpu_driver"),
             vulkan: s(&nvml, "vulkan"),
@@ -122,6 +124,9 @@ fn assemble(
                             resolution: s(m, "resolution").unwrap_or_default(),
                             refresh_rate: m["refresh_rate"].as_u64().unwrap_or(0) as u32,
                             primary: m["primary"].as_bool().unwrap_or(false),
+                            model: s(m, "model").unwrap_or_default(),
+                            scale: m["scale"].as_f64().unwrap_or(1.0),
+                            diagonal_in: m["diagonal_in"].as_f64(),
                         })
                         .collect()
                 })
@@ -144,6 +149,7 @@ fn assemble(
             cargo: software["cargo"].as_u64().unwrap_or(0) as usize,
             node: software["node"].as_u64().unwrap_or(0) as usize,
             flatpak: software["flatpak"].as_u64().unwrap_or(0) as usize,
+            appimage: software["appimage"].as_u64().unwrap_or(0) as usize,
             snap: software["snap"].as_u64().unwrap_or(0) as usize,
             rust_version: s(&software, "rust_ver"),
         },

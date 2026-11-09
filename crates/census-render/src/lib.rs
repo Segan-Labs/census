@@ -12,6 +12,8 @@ pub struct Options {
     pub width: usize,
     pub height: Option<usize>,
     pub color: bool,
+    /// The terminal the client runs in; only the client knows it.
+    pub terminal: Option<String>,
 }
 
 /// The layout names `render_to_string` understands.

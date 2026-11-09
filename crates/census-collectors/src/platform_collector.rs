@@ -93,10 +93,10 @@ pub fn parse_seganos_release(text: &str) -> Option<String> {
 }
 
 /// Nox's own version out of the kernel release: "7.3.0-nox1.2.0" gives "1.2.0". `None` when the
-/// kernel is not Nox. "segnel" is the kernel's name from before it was called Nox.
+/// kernel is not Nox (a "segnel" kernel is the old name and is shown as SegNEL, not Nox).
 pub fn nox_version(release: &str) -> Option<String> {
     let lower = release.to_lowercase();
-    let at = lower.find("nox").map(|i| i + 3).or_else(|| lower.find("segnel").map(|i| i + 6))?;
+    let at = lower.find("nox").map(|i| i + 3)?;
     let rest = &release[at..];
     let ver: String = rest
         .trim_start_matches(['-', '_', '.', ' '])
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn nox_from_kernel_release() {
         assert_eq!(nox_version("7.3.0-nox1.2.0").as_deref(), Some("1.2.0"));
-        assert_eq!(nox_version("7.3.0-segnel1.2.0").as_deref(), Some("1.2.0"));
+        assert_eq!(nox_version("7.3.0-segnel1.2.0"), None);
         assert_eq!(nox_version("6.18.2-arch1-1"), None);
     }
 
