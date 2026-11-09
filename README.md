@@ -104,4 +104,4 @@ tools/bench.sh            # census (warm daemon) against fastfetch
 
 ## License
 
-GPL-3.0
+AGPL-3.0-only
