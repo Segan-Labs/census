@@ -1,0 +1,18 @@
+[package]
+name = "censusd"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "censusd"
+path = "src/main.rs"
+
+[dependencies]
+census-core.workspace = true
+census-collectors.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true

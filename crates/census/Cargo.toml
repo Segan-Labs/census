@@ -1,0 +1,16 @@
+[package]
+name = "census"
+version.workspace = true
+edition.workspace = true
+
+
+[dependencies]
+census-core.workspace = true
+census-protocol.workspace = true
+census-render.workspace = true
+census-layout.workspace = true
+census-collectors.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+chrono.workspace = true

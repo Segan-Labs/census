@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-11-09T00:00:00Z",
+  "system": {
+    "os": "SeganOS 1.0",
+    "kernel": "7.3.0-segnel1.2.0",
+    "hostname": "host",
+    "wm": "SeganOS",
+    "shell": "/usr/bin/zsh",
+    "uptime_secs": 58145,
+    "os_age_days": 6,
+    "load_avg": [
+      1.38,
+      1.48,
+      1.56
+    ],
+    "distro_icon": "",
+    "updates_available": 0,
+    "needs_restart": false
+  },
+  "hardware": {
+    "mobo": "MPG B550 GAMING PLUS (MS-7C56)",
+    "cpu": "AMD Ryzen 7 5700X",
+    "cpu_cores_physical": 8,
+    "cpu_cores_logical": 16,
+    "gpu": "GeForce RTX 3060 Ti",
+    "gpu_driver": "NVIDIA 615.78.08",
+    "vulkan": "1.4.351",
+    "ram_used_gib": 9.362041473388672,
+    "ram_total_gib": 31.26036071777344,
+    "swap_used_gib": 2.829063415527344,
+    "swap_total_gib": 15.629878997802734,
+    "disks": [
+      {
+        "label": "/",
+        "mount": "/",
+        "used_gib": 29.03,
+        "total_gib": 108.49
+      }
+    ]
+  },
+  "display": {
+    "monitors": [
+      {
+        "name": "HDMI-A-1",
+        "resolution": "1920x1080",
+        "refresh_rate": 60,
+        "primary": true
+      }
+    ]
+  },
+  "network": {
+    "lan_ip": null,
+    "public_ip": null,
+    "tailnet_ip": null,
+    "gateway": null,
+    "rx_bytes": 0,
+    "tx_bytes": 0,
+    "speed_mbps": 0,
+    "rx_rate": 0.0,
+    "tx_rate": 0.0
+  },
+  "software": {
+    "pacman": 931,
+    "aur": 0,
+    "cargo": 0,
+    "node": 0,
+    "flatpak": 1,
+    "snap": 0,
+    "rust_version": null
+  },
+  "sensors": {
+    "cpu_temp_c": 65.75,
+    "gpu_temp_c": null,
+    "fan_rpm": null
+  },
+  "platform": {
+    "seganos": "SeganOS 1.0",
+    "nox": "1.2.0",
+    "kerneld_mode": "audio",
+    "fenestra": "Fenestra 1.0 (1127)",
+    "audio": {
+      "rate": 48000,
+      "quantum": 64,
+      "latency_ms": 1.3333333333333333
+    },
+    "gpmix": {
+      "running": true,
+      "version": "0.3.0-rc.578c6f0"
+    }
+  }
+}

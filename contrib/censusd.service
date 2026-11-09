@@ -1,0 +1,13 @@
+[Unit]
+Description=Census daemon: collects system information ahead of time
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/censusd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,7 @@
+[package]
+name = "census-widgets"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+census-core.workspace = true

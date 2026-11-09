@@ -1,0 +1,12 @@
+[package]
+name = "census-render"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+census-core.workspace = true
+census-widgets.workspace = true
+census-layout.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

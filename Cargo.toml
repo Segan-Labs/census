@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/nofetch-core",
-    "crates/nofetch-collectors",
-    "crates/nofetch-protocol",
-    "crates/nofetchd",
-    "crates/nofetch-widgets",
-    "crates/nofetch-layout",
-    "crates/nofetch-render",
-    "crates/nofetch",
+    "crates/census-core",
+    "crates/census-collectors",
+    "crates/census-protocol",
+    "crates/censusd",
+    "crates/census-widgets",
+    "crates/census-layout",
+    "crates/census-render",
+    "crates/census",
 ]
 
 [workspace.package]
@@ -26,10 +26,9 @@ toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 dirs = "5"
-bytes = "1"
-nofetch-core = { path = "crates/nofetch-core" }
-nofetch-collectors = { path = "crates/nofetch-collectors" }
-nofetch-protocol = { path = "crates/nofetch-protocol" }
-nofetch-widgets = { path = "crates/nofetch-widgets" }
-nofetch-layout = { path = "crates/nofetch-layout" }
-nofetch-render = { path = "crates/nofetch-render" }
+census-core = { path = "crates/census-core" }
+census-collectors = { path = "crates/census-collectors" }
+census-protocol = { path = "crates/census-protocol" }
+census-widgets = { path = "crates/census-widgets" }
+census-layout = { path = "crates/census-layout" }
+census-render = { path = "crates/census-render" }
