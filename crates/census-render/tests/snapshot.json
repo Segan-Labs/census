@@ -35,6 +35,13 @@
         "mount": "/",
         "used_gib": 29.03,
         "total_gib": 108.49
+      },
+      {
+        "label": "Ventoy",
+        "mount": "/run/media/segan/Ventoy",
+        "used_gib": 48.5,
+        "total_gib": 57.3,
+        "removable": true
       }
     ]
   },

@@ -127,6 +127,30 @@ fn check_reboot_required() -> bool {
         || std::path::Path::new("/run/reboot-required").exists()
 }
 
+/// Mount points where desktops put removable media.
+const MEDIA_MOUNTS: [&str; 3] = ["/run/media/", "/media/", "/mnt/usb"];
+
+/// Whether `dev` (a /dev path from /proc/mounts) is a USB stick, SD card or other removable medium:
+/// the kernel's `removable` flag on the disk, or a USB bus anywhere above it in sysfs.
+fn is_removable(dev: &str) -> bool {
+    let Ok(real) = std::fs::canonicalize(dev) else { return false };
+    let Some(name) = real.file_name().and_then(|n| n.to_str()) else { return false };
+    let Ok(sys) = std::fs::canonicalize(format!("/sys/class/block/{}", name)) else { return false };
+    if sys.to_string_lossy().contains("/usb") {
+        return true;
+    }
+    // A partition's directory sits inside its disk's; the disk carries the flag.
+    let mut disk = sys.as_path();
+    while let Some(parent) = disk.parent() {
+        if parent.join("removable").exists() && parent.file_name().is_some_and(|n| n != "block") {
+            disk = parent;
+        } else {
+            break;
+        }
+    }
+    std::fs::read_to_string(disk.join("removable")).map(|v| v.trim() == "1").unwrap_or(false)
+}
+
 /// Real, writable-looking filesystems from /proc/mounts, one per device, sized with statvfs.
 fn read_disks() -> Vec<serde_json::Value> {
     const FS: [&str; 10] = ["ext4", "btrfs", "xfs", "f2fs", "zfs", "ntfs", "ntfs3", "fuseblk", "exfat", "vfat"];
@@ -159,11 +183,13 @@ fn read_disks() -> Vec<serde_json::Value> {
         } else {
             mount.rsplit('/').next().unwrap_or(&mount).to_string()
         };
+        let removable = MEDIA_MOUNTS.iter().any(|m| mount.starts_with(m)) || is_removable(dev);
         disks.push(json!({
             "label": label,
             "mount": mount,
             "used_gib": ((total - free) / gib * 100.0).round() / 100.0,
             "total_gib": (total / gib * 100.0).round() / 100.0,
+            "removable": removable,
         }));
     }
     disks

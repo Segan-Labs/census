@@ -55,6 +55,11 @@ pub struct LayoutConfig {
     pub sections: Vec<String>,
     /// Cards of the dashboard layout, two per row.
     pub columns: Vec<Vec<String>>,
+    /// A terminal cell's height over its width, when the terminal does not say (or says wrong).
+    /// Unset: what the terminal reports, else 2.0. `CENSUS_CELL_ASPECT` in the environment wins.
+    pub cell_aspect: Option<f64>,
+    /// Show USB sticks, SD cards and other removable media as Disk rows.
+    pub removable_disks: bool,
 }
 
 impl Default for LayoutConfig {
@@ -72,6 +77,8 @@ impl Default for LayoutConfig {
                 vec!["software".into(), "display".into()],
                 vec!["network".into(), "sensors".into()],
             ],
+            cell_aspect: None,
+            removable_disks: false,
         }
     }
 }

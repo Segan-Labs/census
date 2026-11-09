@@ -59,6 +59,9 @@ pub struct DiskInfo {
     pub mount: String,
     pub used_gib: f64,
     pub total_gib: f64,
+    /// A USB stick, SD card or other removable medium; hidden unless the config shows them.
+    #[serde(default)]
+    pub removable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

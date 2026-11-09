@@ -5,7 +5,7 @@ use census_collectors::SnapshotBuilder;
 mod terminal;
 
 use census_core::{Config, Snapshot};
-use census_layout::terminal_size;
+use census_layout::terminal_geometry;
 use census_protocol::get_snapshot;
 use census_render::{render_to_string, Options};
 
@@ -22,6 +22,9 @@ usage: census [options]
   --snapshot FILE   render a snapshot saved with --json
   -h, --help        this text
   -V, --version     the version
+
+The logo is drawn to the list's height and the terminal's cell shape; set CENSUS_CELL_ASPECT
+(a cell's height over its width, e.g. 2.2) or [layout] cell_aspect when the terminal gets it wrong.
 
 censusd keeps a snapshot warm; without it census collects directly, which is slower.";
 
@@ -107,9 +110,10 @@ fn run(args: &mut Args) -> Result<(), String> {
     }
 
     let tty = std::io::stdout().is_terminal();
-    let size = terminal_size();
-    args.opts.width = args.width.or(size.map(|s| s.0)).unwrap_or(80);
-    args.opts.height = args.height.or(size.map(|s| s.1));
+    let term = terminal_geometry();
+    args.opts.width = args.width.or(term.map(|t| t.cols)).unwrap_or(80);
+    args.opts.height = args.height.or(term.map(|t| t.rows));
+    args.opts.cell_aspect = cell_aspect(&config, term.and_then(|t| t.cell_aspect));
     args.opts.color = match args.color.as_str() {
         "always" => true,
         "never" => false,
@@ -120,6 +124,19 @@ fn run(args: &mut Args) -> Result<(), String> {
     use std::io::Write;
     let _ = std::io::stdout().write_all(text.as_bytes());
     Ok(())
+}
+
+/// A cell's height over its width: `CENSUS_CELL_ASPECT`, else `[layout] cell_aspect`, else what the
+/// terminal reports, else 2.0.
+fn cell_aspect(config: &Config, reported: Option<f64>) -> f64 {
+    let valid = |a: f64| (1.0..=4.0).contains(&a);
+    std::env::var("CENSUS_CELL_ASPECT")
+        .ok()
+        .and_then(|v| v.trim().parse::<f64>().ok())
+        .filter(|a| valid(*a))
+        .or(config.layout.cell_aspect.filter(|a| valid(*a)))
+        .or(reported)
+        .unwrap_or(2.0)
 }
 
 fn load_snapshot(args: &Args, config: &Config) -> Result<Snapshot, String> {

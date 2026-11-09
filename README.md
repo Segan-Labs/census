@@ -33,7 +33,9 @@ Each of these shows only when it is there, and none of them starts a process per
 - **Audio**: PipeWire's clock rate and quantum as latency in milliseconds, read with `pw-metadata`.
 - **GP Mix**: running or not, and its version.
 
-Elsewhere the logo is a neutral mark; on SeganOS it is the Eclipse.
+Elsewhere the logo is a neutral mark; on SeganOS it is the Eclipse, drawn at run time to the height of the list (14 to 40 rows) and to your terminal's cell shape, so the disc is round whatever the font. Terminals that report their size in pixels need no setting; for the rest, or when the terminal gets it wrong, set `cell_aspect` (a cell's height over its width, about 2.0 to 2.8) under `[layout]`, or `CENSUS_CELL_ASPECT` in the environment. The drawn art is cached under `~/.cache/census/`.
+
+Removable media (USB sticks, SD cards) are not listed as disks unless `[layout] removable_disks = true`.
 
 ## Private by default
 
@@ -56,7 +58,7 @@ census [--layout classic|compact|dashboard] [--logo auto|eclipse|neutral|none]
 
 `--json` prints the snapshot; `--snapshot` renders a saved one.
 
-Config lives in `~/.config/census/config.toml`: `[layout]` (`style`, `logo`, `sections`), `[privacy]`, `[daemon]` (`socket_path`, `collector_interval_secs`).
+Config lives in `~/.config/census/config.toml`: `[layout]` (`style`, `logo`, `sections`, `cell_aspect`, `removable_disks`), `[privacy]`, `[daemon]` (`socket_path`, `collector_interval_secs`).
 
 ## Why a daemon
 
@@ -92,7 +94,7 @@ cargo test
 tools/bench.sh            # census (warm daemon) against fastfetch
 ```
 
-`tools/ansi2png.py` and `tools/shots.sh` make the screenshots. The Eclipse lives in `crates/census-render/assets/`: the art file plus a tones file of the same shape (`b` the bold core of the crescent, `a` accent, `d` the dim disc and stars, `f` the terminal's own foreground for the orbit). `tools/eclipse-art.py` draws both sizes from geometry, so tune the numbers there and rerun it rather than editing the text by hand.
+`tools/ansi2png.py` and `tools/shots.sh` make the screenshots. The Eclipse is drawn by `crates/census-render/src/eclipse.rs` from geometry (every length a ratio of the disc radius), with a tone per cell: `b` the bold core of the crescent, `a` accent, `d` the dim disc and stars, `f` the terminal's own foreground for the orbit. Tune the ratios there; `ART_VERSION` invalidates the cache.
 
 ## Roadmap
 

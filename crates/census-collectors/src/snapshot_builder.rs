@@ -109,6 +109,7 @@ fn assemble(
                             mount: s(d, "mount").unwrap_or_default(),
                             used_gib: d["used_gib"].as_f64().unwrap_or(0.0),
                             total_gib: d["total_gib"].as_f64().unwrap_or(0.0),
+                            removable: d["removable"].as_bool().unwrap_or(false),
                         })
                         .collect()
                 })

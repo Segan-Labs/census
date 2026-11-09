@@ -3,7 +3,7 @@
 //! follows the terminal's theme) marks the logo, the user@host line and the section names; the
 //! shadowed part of the Eclipse is dim, like the labels.
 
-use crate::logo::{self, Logo, Tone};
+use crate::logo::{self, Choice, Logo, Tone};
 use crate::Options;
 use census_core::{Config, Snapshot};
 
@@ -16,7 +16,8 @@ const ACCENT_BOLD: &str = "\x1b[1;35m";
 const MAX_INFO_WIDTH: usize = 56;
 /// Below this much room for the list, the logo is dropped.
 const MIN_INFO_WIDTH: usize = 40;
-const LOGO_GAP: usize = 3;
+/// Columns of air between the logo and the list.
+const LOGO_GAP: usize = 5;
 
 struct Row {
     label: &'static str,
@@ -78,39 +79,62 @@ pub fn render(snapshot: &Snapshot, config: &Config, opts: &Options, compact: boo
     let user = std::env::var("USER").unwrap_or_else(|_| "user".into());
     let header = format!("{}@{}", user, snapshot.system.hostname);
 
-    let choice = opts.logo.as_deref().unwrap_or(&config.layout.logo);
-    let logo = logo::pick(choice, snapshot, compact);
+    let choice = logo::choose(opts.logo.as_deref().unwrap_or(&config.layout.logo), snapshot);
+    let aspect = if opts.cell_aspect.is_finite() && opts.cell_aspect > 0.5 { opts.cell_aspect } else { 2.0 };
 
     if compact {
-        render_compact(&mut sections, &header, logo, width, opts.height, &st)
+        render_compact(&mut sections, &header, choice, aspect, width, opts.height, &st)
     } else {
-        render_classic(&mut sections, &header, logo, width, opts.height, &st)
+        render_classic(&mut sections, &header, choice, aspect, width, opts.height, &st)
     }
+}
+
+/// The logo for a list `list_rows` tall that wants `info` columns, if one fits beside it.
+///
+/// The Eclipse takes the list's height (within its bounds and the terminal's), and as many columns
+/// as that needs for the cell shape. When that leaves too little room for the list it is drawn
+/// shorter, first keeping the list at its full width, then at the width it can be truncated to; when
+/// not even the smallest fits, there is no logo.
+fn size_logo(choice: Choice, list_rows: usize, budget: Option<usize>, width: usize, info: usize, aspect: f64, small: bool) -> Option<Logo> {
+    let (min_rows, max_rows) = if small { (logo::SMALL_MIN_ROWS, logo::SMALL_MAX_ROWS) } else { (logo::MIN_ROWS, logo::MAX_ROWS) };
+    let max_rows = max_rows.min(budget.unwrap_or(max_rows));
+    if choice == Choice::None || max_rows < min_rows {
+        return None;
+    }
+    let want = list_rows.clamp(min_rows, max_rows);
+    for info_w in [info.min(MAX_INFO_WIDTH), info.min(MIN_INFO_WIDTH)] {
+        let room = width.saturating_sub(info_w + LOGO_GAP);
+        let mut rows = want;
+        while rows > min_rows && logo::width_for(choice, rows, aspect, small) > room {
+            rows -= 1;
+        }
+        if logo::width_for(choice, rows, aspect, small) <= room {
+            let logo = logo::build(choice, rows, aspect, small)?;
+            if budget.is_none_or(|b| logo.height() <= b) {
+                return Some(logo);
+            }
+            return None;
+        }
+    }
+    None
 }
 
 fn render_classic(
     sections: &mut Vec<Section>,
     header: &str,
-    logo: Option<Logo>,
+    choice: Choice,
+    aspect: f64,
     width: usize,
     height: Option<usize>,
     st: &Style,
 ) -> String {
     let budget = height.map(|h| h.saturating_sub(1));
-    // A logo taller than the terminal is dropped before anything else is.
-    let logo = logo.filter(|l| budget.is_none_or(|b| l.height() <= b));
     if let Some(b) = budget {
         fit(sections, b, 3);
     }
 
     let natural = natural_width(sections, header);
-    let mut logo = logo;
-    if let Some(l) = &logo {
-        let room = width.saturating_sub(l.width + LOGO_GAP);
-        if room < natural.min(MIN_INFO_WIDTH) {
-            logo = None;
-        }
-    }
+    let logo = size_logo(choice, total_lines(sections, 3), budget, width, natural, aspect, false);
     let avail = match &logo {
         Some(l) => width.saturating_sub(l.width + LOGO_GAP),
         None => width,
@@ -135,19 +159,15 @@ fn render_classic(
 fn render_compact(
     sections: &mut Vec<Section>,
     header: &str,
-    logo: Option<Logo>,
+    choice: Choice,
+    aspect: f64,
     width: usize,
     height: Option<usize>,
     st: &Style,
 ) -> String {
     let budget = height.map(|h| h.saturating_sub(1));
-    let logo = logo.filter(|l| budget.is_none_or(|b| l.height() <= b));
     let first = if sections.is_empty() { None } else { Some(sections.remove(0)) };
     let top_rows = first.as_ref().map(|s| s.rows.len()).unwrap_or(0) + 3;
-    let top_h = top_rows.max(logo.as_ref().map(|l| l.height()).unwrap_or(0));
-    if let Some(b) = budget {
-        fit(sections, b.saturating_sub(top_h), 1);
-    }
 
     let mut all: Vec<&Section> = sections.iter().collect();
     if let Some(f) = &first {
@@ -155,11 +175,10 @@ fn render_compact(
     }
     let lw = all.iter().flat_map(|s| s.rows.iter()).map(|r| r.label.len()).max().unwrap_or(0);
     let natural = natural_width(sections, header).max(first.as_ref().map(|f| 4 + lw + f.rows.iter().map(|r| r.value.chars().count()).max().unwrap_or(0)).unwrap_or(0));
-    let mut logo = logo;
-    if let Some(l) = &logo {
-        if width.saturating_sub(l.width + LOGO_GAP) < natural.min(MIN_INFO_WIDTH) {
-            logo = None;
-        }
+    let logo = size_logo(choice, top_rows, budget, width, natural, aspect, true);
+    let top_h = top_rows.max(logo.as_ref().map(|l| l.height()).unwrap_or(0));
+    if let Some(b) = budget {
+        fit(sections, b.saturating_sub(top_h), 1);
     }
     let top_avail = match &logo {
         Some(l) => width.saturating_sub(l.width + LOGO_GAP),
@@ -367,7 +386,7 @@ fn sections(s: &Snapshot, config: &Config, opts: &Options) -> Vec<Section> {
     for name in &config.layout.sections {
         let section = match name.as_str() {
             "system" => system(s),
-            "hardware" => hardware(s),
+            "hardware" => hardware(s, config.layout.removable_disks),
             "session" => session(s, opts),
             "audio" => audio(s),
             "network" => network(s),
@@ -409,7 +428,7 @@ fn system(s: &Snapshot) -> Section {
     Section { title: "System", rows }
 }
 
-fn hardware(s: &Snapshot) -> Section {
+fn hardware(s: &Snapshot, removable: bool) -> Section {
     let h = &s.hardware;
     let mut rows = Vec::new();
     if h.cpu != "Unknown CPU" {
@@ -434,7 +453,7 @@ fn hardware(s: &Snapshot) -> Section {
     if h.swap_total_gib > 0.0 {
         rows.push(usage_row("Swap", h.swap_used_gib, h.swap_total_gib, 1));
     }
-    for (i, d) in h.disks.iter().enumerate() {
+    for (i, d) in h.disks.iter().filter(|d| removable || !d.removable).enumerate() {
         if d.total_gib <= 0.0 {
             continue;
         }

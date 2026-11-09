@@ -113,6 +113,7 @@ dependencies = [
  "census-core",
  "census-layout",
  "census-widgets",
+ "dirs",
  "serde_json",
 ]
 

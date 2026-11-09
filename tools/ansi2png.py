@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Render ANSI text (stdin) to a PNG: a headless terminal for README and design screenshots.
 
-    census --color always --width 100 --height 28 | python3 tools/ansi2png.py [--light] out.png [cols] [rows]
+    census --color always --width 100 --height 28 | python3 tools/ansi2png.py [--light] [--aspect 2.8] out.png [cols] [rows]
 
 Handles the SGR codes census prints (reset, bold, dim, the 8 + 8 palette colours, default colours).
-`--light` renders on a light terminal theme instead of the dark one.
+`--light` renders on a light terminal theme instead of the dark one. `--aspect` sets the cell height
+over its width (the font's own line height, about 2.36, when not given), to preview a terminal whose
+cells are taller; pass the same value to census as CENSUS_CELL_ASPECT.
 """
 import re
 import sys
@@ -80,9 +82,16 @@ def parse(text):
 def main():
     global THEME
     args = sys.argv[1:]
-    if args and args[0] == "--light":
-        THEME = LIGHT
-        args = args[1:]
+    aspect = None
+    while args and args[0].startswith("--"):
+        if args[0] == "--light":
+            THEME = LIGHT
+            args = args[1:]
+        elif args[0] == "--aspect":
+            aspect = float(args[1])
+            args = args[2:]
+        else:
+            raise SystemExit(f"unknown option {args[0]}")
     out = args[0]
     rows = parse(sys.stdin.read())
     cols = int(args[1]) if len(args) > 1 else max(len(r) for r in rows)
@@ -90,7 +99,7 @@ def main():
     bg, default_fg = THEME["bg"], THEME["fg"]
     font, bold_font = ImageFont.truetype(FONT, SIZE), ImageFont.truetype(FONT_BOLD, SIZE)
     cw = round(font.getlength("M"))
-    ch = round(SIZE * 1.45)
+    ch = round(cw * aspect) if aspect else round(SIZE * 1.45)
     img = Image.new("RGB", (cols * cw + PAD * 2, nrows * ch + PAD * 2), bg)
     d = ImageDraw.Draw(img)
     for y, row in enumerate(rows[:nrows]):
