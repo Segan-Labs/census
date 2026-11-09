@@ -92,7 +92,7 @@ cargo test
 tools/bench.sh            # census (warm daemon) against fastfetch
 ```
 
-`tools/ansi2png.py` and `tools/shots.sh` make the screenshots. The Eclipse is hand-drawn text in `crates/census-render/assets/`: the art file plus a tones file of the same shape (`d` marks the dim, shadowed disc).
+`tools/ansi2png.py` and `tools/shots.sh` make the screenshots. The Eclipse lives in `crates/census-render/assets/`: the art file plus a tones file of the same shape (`b` the bold core of the crescent, `a` accent, `d` the dim disc and stars, `f` the terminal's own foreground for the orbit). `tools/eclipse-art.py` draws both sizes from geometry, so tune the numbers there and rerun it rather than editing the text by hand.
 
 ## Roadmap
 

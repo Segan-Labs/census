@@ -231,7 +231,9 @@ fn join(logo: Option<&Logo>, lines: Vec<Line>, st: &Style) -> String {
                 w += run.chars().count();
                 out.push_str(&match tone {
                     Tone::Accent => st.accent(&run),
+                    Tone::Bold => st.title(&run),
                     Tone::Dim => st.dim(&run),
+                    Tone::Plain => run,
                 });
             }
             out.push_str(&" ".repeat(l.width - w + LOGO_GAP));
