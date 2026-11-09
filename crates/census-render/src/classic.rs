@@ -21,6 +21,8 @@ const LOGO_GAP: usize = 3;
 struct Row {
     label: &'static str,
     value: String,
+    /// A usage percentage shown at the end of `value` as "(NN%)", painted by how full it is.
+    pct: Option<u32>,
     /// 0 stays as long as it can; 2 goes first when the terminal is short.
     prio: u8,
 }
@@ -44,6 +46,10 @@ impl Style {
             s.to_string()
         }
     }
+    /// The colour of a usage percentage: green below 60, yellow below 85, red from 85 up.
+    fn usage(&self, pct: u32, s: &str) -> String {
+        self.paint(usage_color(pct), s)
+    }
     fn dim(&self, s: &str) -> String {
         self.paint(DIM, s)
     }
@@ -55,10 +61,20 @@ impl Style {
     }
 }
 
+pub fn usage_color(pct: u32) -> &'static str {
+    if pct < 60 {
+        "\x1b[32m"
+    } else if pct < 85 {
+        "\x1b[33m"
+    } else {
+        "\x1b[31m"
+    }
+}
+
 pub fn render(snapshot: &Snapshot, config: &Config, opts: &Options, compact: bool) -> String {
     let st = Style { color: opts.color };
     let width = opts.width;
-    let mut sections = sections(snapshot, config);
+    let mut sections = sections(snapshot, config, opts);
     let user = std::env::var("USER").unwrap_or_else(|_| "user".into());
     let header = format!("{}@{}", user, snapshot.system.hostname);
 
@@ -191,7 +207,14 @@ fn row_lines(s: &Section, lw: usize, avail: usize, st: &Style) -> Vec<Line> {
     s.rows
         .iter()
         .map(|r| {
-            let value = trunc(&r.value, room);
+            let mut value = trunc(&r.value, room);
+            if let Some(p) = r.pct {
+                let tag = format!("({}%)", p);
+                if let Some(at) = value.find(&tag) {
+                    let painted = format!("({})", st.usage(p, &format!("{}%", p)));
+                    value.replace_range(at..at + tag.len(), &painted);
+                }
+            }
             format!("  {}  {}", st.dim(&format!("{:<w$}", r.label, w = lw)), value)
         })
         .collect()
@@ -258,7 +281,62 @@ fn trunc(s: &str, max: usize) -> String {
 }
 
 fn row(label: &'static str, value: impl Into<String>, prio: u8) -> Row {
-    Row { label, value: value.into(), prio }
+    Row { label, value: value.into(), pct: None, prio }
+}
+
+/// "9.9 / 31.3 GiB (32%)": used and total in the total's unit, then how full it is.
+fn usage_row(label: &'static str, used_gib: f64, total_gib: f64, prio: u8) -> Row {
+    let pct = ((used_gib / total_gib) * 100.0).round().clamp(0.0, 100.0) as u32;
+    let mut r = row(label, fmt_usage(used_gib, total_gib), prio);
+    r.pct = Some(pct);
+    r
+}
+
+pub fn fmt_usage(used_gib: f64, total_gib: f64) -> String {
+    let pct = ((used_gib / total_gib) * 100.0).round().clamp(0.0, 100.0) as u32;
+    if total_gib >= 1024.0 {
+        format!("{:.2} / {:.2} TiB ({}%)", used_gib / 1024.0, total_gib / 1024.0, pct)
+    } else {
+        format!("{:.1} / {:.1} GiB ({}%)", used_gib, total_gib, pct)
+    }
+}
+
+/// The running kernel as it is: "Nox 1.2.0 (Linux 7.3.0)", "SegNEL 1.2.0 (Linux 7.3.0)", else "Linux <release>".
+pub fn kernel_label(release: &str) -> String {
+    let base: String = release.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+    let base = base.trim_end_matches('.');
+    let lower = release.to_lowercase();
+    for (key, name) in [("nox", "Nox"), ("segnel", "SegNEL")] {
+        if let Some(i) = lower.find(key) {
+            let ver: String = release[i + key.len()..]
+                .trim_start_matches(['-', '_', '.', ' '])
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            let ver = ver.trim_end_matches('.');
+            if !ver.is_empty() {
+                return format!("{} {} (Linux {})", name, ver, base);
+            }
+        }
+    }
+    format!("Linux {}", release)
+}
+
+/// "1920x1080" to "1920×1080".
+fn fmt_monitor(m: &census_core::MonitorInfo) -> String {
+    let name = if m.model.is_empty() { m.name.clone() } else { m.model.clone() };
+    let mut out = format!("{} {}", name, m.resolution.replace('x', "×"));
+    if (m.scale - 1.0).abs() > 0.005 {
+        let sc = format!("{:.2}", m.scale);
+        out.push_str(&format!(" @ {}x", sc.trim_end_matches('0').trim_end_matches('.')));
+    }
+    if let Some(d) = m.diagonal_in {
+        out.push_str(&format!(", {}″", d));
+    }
+    if m.refresh_rate > 0 {
+        out.push_str(&format!(", {} Hz", m.refresh_rate));
+    }
+    out
 }
 
 fn cap(s: &str) -> String {
@@ -282,13 +360,13 @@ fn fmt_uptime(secs: u64) -> String {
     }
 }
 
-fn sections(s: &Snapshot, config: &Config) -> Vec<Section> {
+fn sections(s: &Snapshot, config: &Config, opts: &Options) -> Vec<Section> {
     let mut out = Vec::new();
     for name in &config.layout.sections {
         let section = match name.as_str() {
             "system" => system(s),
             "hardware" => hardware(s),
-            "session" => session(s),
+            "session" => session(s, opts),
             "audio" => audio(s),
             "network" => network(s),
             _ => continue,
@@ -303,16 +381,10 @@ fn sections(s: &Snapshot, config: &Config) -> Vec<Section> {
 fn system(s: &Snapshot) -> Section {
     let p = &s.platform;
     let mut rows = vec![row("OS", p.seganos.clone().unwrap_or_else(|| s.system.os.clone()), 0)];
-    let release = &s.system.kernel;
-    let base: String = release.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
-    rows.push(row(
-        "Kernel",
-        match &p.nox {
-            Some(v) => format!("Nox {} (Linux {})", v, base.trim_end_matches('.')),
-            None => format!("Linux {}", release),
-        },
-        0,
-    ));
+    if let Some(h) = &s.hardware.host {
+        rows.push(row("Host", h.clone(), 1));
+    }
+    rows.push(row("Kernel", kernel_label(&s.system.kernel), 0));
     if let Some(m) = &p.kerneld_mode {
         rows.push(row("Profile", cap(m), 1));
     }
@@ -321,6 +393,7 @@ fn system(s: &Snapshot) -> Section {
     let pkgs: Vec<String> = [
         (sw.pacman, "pacman"),
         (sw.flatpak, "flatpak"),
+        (sw.appimage, "AppImage"),
         (sw.snap, "snap"),
         (sw.cargo, "cargo"),
     ]
@@ -338,7 +411,8 @@ fn hardware(s: &Snapshot) -> Section {
     let h = &s.hardware;
     let mut rows = Vec::new();
     if h.cpu != "Unknown CPU" {
-        rows.push(row("CPU", format!("{} ({}C/{}T)", h.cpu, h.cpu_cores_physical, h.cpu_cores_logical), 0));
+        let freq = h.cpu_max_mhz.filter(|m| *m > 0).map(|m| format!(" @ {:.2} GHz", m as f64 / 1000.0)).unwrap_or_default();
+        rows.push(row("CPU", format!("{} ({}C/{}T){}", h.cpu, h.cpu_cores_physical, h.cpu_cores_logical, freq), 0));
     }
     if h.gpu != "Unknown GPU" && h.gpu != "Unknown" {
         rows.push(row("GPU", h.gpu.clone(), 0));
@@ -353,15 +427,23 @@ fn hardware(s: &Snapshot) -> Section {
         rows.push(row("Driver", driver.join(" · "), 1));
     }
     if h.ram_total_gib > 0.0 {
-        rows.push(row("Memory", format!("{:.1} / {:.1} GiB", h.ram_used_gib, h.ram_total_gib), 0));
+        rows.push(usage_row("Memory", h.ram_used_gib, h.ram_total_gib, 0));
     }
-    for (i, d) in h.disks.iter().take(3).enumerate() {
-        rows.push(row("Disk", format!("{:.0} / {:.0} GiB ({})", d.used_gib, d.total_gib, d.label), if i == 0 { 0 } else { 2 }));
+    if h.swap_total_gib > 0.0 {
+        rows.push(usage_row("Swap", h.swap_used_gib, h.swap_total_gib, 1));
+    }
+    for (i, d) in h.disks.iter().enumerate() {
+        if d.total_gib <= 0.0 {
+            continue;
+        }
+        let mut r = usage_row("Disk", d.used_gib, d.total_gib, if i == 0 { 0 } else { 2 });
+        r.value = format!("{} · {}", r.value, d.label);
+        rows.push(r);
     }
     Section { title: "Hardware", rows }
 }
 
-fn session(s: &Snapshot) -> Section {
+fn session(s: &Snapshot, opts: &Options) -> Section {
     let mut rows = Vec::new();
     let desktop = std::env::var("XDG_CURRENT_DESKTOP").ok().filter(|d| !d.is_empty());
     match (&s.platform.fenestra, desktop.or_else(|| Some(s.system.wm.clone()).filter(|w| w != "unknown"))) {
@@ -374,10 +456,11 @@ fn session(s: &Snapshot) -> Section {
     if !shell.is_empty() && shell != "unknown" {
         rows.push(row("Shell", shell, 2));
     }
-    let many = s.display.monitors.len() > 1;
+    if let Some(t) = opts.terminal.as_ref().filter(|t| !t.is_empty()) {
+        rows.push(row("Terminal", t.clone(), 2));
+    }
     for (i, m) in s.display.monitors.iter().enumerate() {
-        let name = if many { format!(" ({})", m.name) } else { String::new() };
-        rows.push(row("Display", format!("{} @ {} Hz{}", m.resolution, m.refresh_rate, name), if i == 0 { 1 } else { 2 }));
+        rows.push(row("Display", fmt_monitor(m), if i == 0 { 1 } else { 2 }));
     }
     Section { title: "Session", rows }
 }
@@ -424,4 +507,51 @@ fn network(s: &Snapshot) -> Section {
         rows.push(row("Tailnet", ip.clone(), 0));
     }
     Section { title: "Network", rows }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use census_core::MonitorInfo;
+
+    fn mon(model: &str, res: &str, scale: f64, diag: Option<f64>, hz: u32) -> MonitorInfo {
+        MonitorInfo { name: "DP-1".into(), resolution: res.into(), refresh_rate: hz, primary: false, model: model.into(), scale, diagonal_in: diag }
+    }
+
+    #[test]
+    fn monitor_lines() {
+        assert_eq!(fmt_monitor(&mon("R24e", "1080x1920", 1.77, Some(24.0), 60)), "R24e 1080×1920 @ 1.77x, 24″, 60 Hz");
+        assert_eq!(fmt_monitor(&mon("N27q", "2560x1440", 1.0, Some(27.0), 60)), "N27q 2560×1440, 27″, 60 Hz");
+        assert_eq!(fmt_monitor(&mon("", "1920x1080", 1.5, None, 0)), "DP-1 1920×1080 @ 1.5x");
+        assert_eq!(fmt_monitor(&mon("X", "1920x1080", 2.0, None, 144)), "X 1920×1080 @ 2x, 144 Hz");
+    }
+
+    #[test]
+    fn kernel_naming() {
+        assert_eq!(kernel_label("7.3.0-nox1.2.0"), "Nox 1.2.0 (Linux 7.3.0)");
+        assert_eq!(kernel_label("7.3.0-segnel1.2.0"), "SegNEL 1.2.0 (Linux 7.3.0)");
+        assert_eq!(kernel_label("6.12.1-arch1-1"), "Linux 6.12.1-arch1-1");
+    }
+
+    #[test]
+    fn usage_thresholds() {
+        assert_eq!(usage_color(0), "\x1b[32m");
+        assert_eq!(usage_color(59), "\x1b[32m");
+        assert_eq!(usage_color(60), "\x1b[33m");
+        assert_eq!(usage_color(84), "\x1b[33m");
+        assert_eq!(usage_color(85), "\x1b[31m");
+        assert_eq!(usage_color(100), "\x1b[31m");
+    }
+
+    #[test]
+    fn usage_text_and_paint() {
+        assert_eq!(fmt_usage(9.9, 31.3), "9.9 / 31.3 GiB (32%)");
+        assert_eq!(fmt_usage(0.0, 1833.0), "0.00 / 1.79 TiB (0%)");
+        let r = usage_row("Memory", 28.0, 31.0, 0);
+        let s = Section { title: "t", rows: vec![r] };
+        let colored = row_lines(&s, 6, 60, &Style { color: true }).join("");
+        assert!(colored.contains("(\x1b[31m90%\x1b[0m)"), "{:?}", colored);
+        let plain = row_lines(&s, 6, 60, &Style { color: false }).join("");
+        assert!(plain.contains("(90%)") && !plain.contains('\x1b'));
+    }
 }

@@ -129,13 +129,13 @@ fn check_reboot_required() -> bool {
 
 /// Real, writable-looking filesystems from /proc/mounts, one per device, sized with statvfs.
 fn read_disks() -> Vec<serde_json::Value> {
-    const FS: [&str; 7] = ["ext4", "btrfs", "xfs", "f2fs", "zfs", "ntfs3", "exfat"];
+    const FS: [&str; 10] = ["ext4", "btrfs", "xfs", "f2fs", "zfs", "ntfs", "ntfs3", "fuseblk", "exfat", "vfat"];
     let mut seen = std::collections::HashSet::new();
     let mut disks = Vec::new();
     for line in "/proc/mounts".read_string().lines() {
         let mut p = line.split_whitespace();
         let (Some(dev), Some(mount), Some(fs)) = (p.next(), p.next(), p.next()) else { continue };
-        if !FS.contains(&fs) || !dev.starts_with('/') || mount.starts_with("/boot") || mount.starts_with("/var/lib/docker") {
+        if !FS.contains(&fs) || !dev.starts_with('/') || mount.starts_with("/var/lib/docker") || mount.starts_with("/var/lib/snapd") || mount.starts_with("/snap") {
             continue;
         }
         if !seen.insert(dev.to_string()) {
@@ -149,10 +149,11 @@ fn read_disks() -> Vec<serde_json::Value> {
         }
         let total = st.f_blocks as f64 * st.f_frsize as f64;
         let free = st.f_bfree as f64 * st.f_frsize as f64;
-        if total <= 0.0 {
+        let gib = 1073741824.0;
+        // Boot partitions, ESPs and recovery volumes are smaller than a gibibyte.
+        if total < gib {
             continue;
         }
-        let gib = 1073741824.0;
         let label = if mount == "/" {
             "/".to_string()
         } else {

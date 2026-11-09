@@ -2,6 +2,8 @@ use std::io::IsTerminal;
 use std::process::ExitCode;
 
 use census_collectors::SnapshotBuilder;
+mod terminal;
+
 use census_core::{Config, Snapshot};
 use census_layout::terminal_size;
 use census_protocol::get_snapshot;
@@ -113,6 +115,7 @@ fn run(args: &mut Args) -> Result<(), String> {
         "never" => false,
         _ => tty && std::env::var_os("NO_COLOR").is_none(),
     };
+    args.opts.terminal = terminal::detect();
     let text = render_to_string(&snapshot, &config, &args.opts)?;
     use std::io::Write;
     let _ = std::io::stdout().write_all(text.as_bytes());

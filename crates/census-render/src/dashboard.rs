@@ -143,6 +143,7 @@ fn card_software(s: &Snapshot, w: usize) -> Card {
     if s.software.cargo > 0 { rows.push(kv("\u{e7a8}", "Cargo", &s.software.cargo.to_string())); }
     if s.software.node > 0 { rows.push(kv("\u{e718}", "Node", &s.software.node.to_string())); }
     if s.software.flatpak > 0 { rows.push(kv("\u{f300}", "Flatpak", &s.software.flatpak.to_string())); }
+    if s.software.appimage > 0 { rows.push(kv("\u{f300}", "AppImage", &s.software.appimage.to_string())); }
     if s.software.snap > 0 { rows.push(kv("\u{e731}", "Snap", &s.software.snap.to_string())); }
     if let Some(v) = &s.software.rust_version { rows.push(kv("\u{e7a8}", "Rust", v)); }
     Card::new("Software", rows, w)
